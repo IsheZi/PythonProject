@@ -1,15 +1,27 @@
-# Ignore virtual environment
+# Virtual environments
 .venv/
+env/
 
-# Ignore PyCharm project files
+# PyCharm project settings
 .idea/
 
-# Ignore Python cache
+# Python cache and compiled files
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
 
-# Ignore log files
+# Logs
 *.log
 
-# Ignore sessions file
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Sessions or temporary data
 sessions.txt
+
+# Test/coverage reports
+.coverage
+*.coverage
+htmlcov/
