@@ -1,1 +1,3 @@
-alice,$2b$12$q5pl4FE2Iiq16DcK5NwdB.fAuR0pAAJy3ZFZvMywape1cUf1j3nY2
+
+
+alice,$2b$12$Zjp94rW3WQ0lTrPkmWnyee5ULIdbdeeHjT6VsIMIdiHJNDbQMftgG,admin
