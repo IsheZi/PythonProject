@@ -71,15 +71,25 @@ def user_exists(username: str) -> bool:
                 return True
     return False
 
-def register_user(username: str, password: str, role: str = "user") -> bool:
-    """Register a new user with a role."""
-    if user_exists(username):
-        print(f"Error: Username '{username}' already exists.")
-        return False
+def register_user(username: str, password: str, role: str):
+    """Register a new user with hashed password and role."""
+    if os.path.exists(USER_DATA_FILE):
+        # check if username already exists
+        with open(USER_DATA_FILE, "r") as f:
+            for line in f:
+                parts = line.strip().split(",")
+                if len(parts) >= 1 and parts[0] == username:
+                    print(f"Error: Username '{username}' already exists.")
+                    return False
+
+    # hash the password
     hashed_password = hash_password(password)
+
+    # save user data (username, hash, role)
     with open(USER_DATA_FILE, "a") as f:
         f.write(f"{username},{hashed_password},{role}\n")
-    print(f"Success: User '{username}' registered with role '{role}'!")
+
+    print(f"Success: User '{username}' registered with role '{role}'.")
     return True
 
 # ---------------- Account Lockout ----------------
@@ -160,11 +170,13 @@ def view_all_users():
     with open(USER_DATA_FILE, "r") as f:
         for line in f:
             parts = line.strip().split(",")
-            if len(parts) == 3:
-                user, _, role = parts
-            else:
-                user, _ = parts
+            if len(parts) >= 3:
+                user,stored_hash,role = parts
+            elif len(parts) == 2:
+                user,stored_hash= parts
                 role = "user"
+            else:
+                continue
             print(f"Username: {user}, Role: {role}")
     print("------------------------")
 
