@@ -5,7 +5,7 @@ import time
 import secrets
 
 # File paths for storing user data, lockout info, and sessions
-USER_DATA_FILE = "users.txt"
+USER_DATA_FILE = "DATA/users.txt"
 LOCKOUT_FILE = "lockout.txt"
 SESSION_FILE = "sessions.txt"
 

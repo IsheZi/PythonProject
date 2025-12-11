@@ -1,0 +1,3 @@
+ticket_id,severity,status,category,description,created_date,reported_by,assigned_to
+TCK-001,High,Open,Network,"Router failure in office",2025-12-01,alice,admin
+TCK-002,Low,Resolved,Software,"Password reset request",2025-12-02,bob,support
