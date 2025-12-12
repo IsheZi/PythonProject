@@ -1,115 +1,106 @@
-# Demo script to test schema, user migration, authentication, CSV loading, and incidents CRUD
-
-from app.data.db import connect_database
 from app.data.schema import create_all_tables
-from app.services.user_service import migrate_users_from_file, register_user, login_user
-from app.data.load_csv import load_all_csv_data
-from app.data.incidents import insert_incident, get_all_incidents, update_incident_status, delete_incident
-from app.data.tickets import insert_ticket, get_all_tickets, update_ticket_status, delete_ticket_by_id
-from prettytable import PrettyTable
-from app.data.datasets import insert_dataset, get_all_datasets, update_dataset_category, delete_dataset_by_id
+from app.services.user_service import (
+    register_user,
+    login_user,
+    migrate_users_from_file
+)
+from app.services.loaders import load_all_csv_data
+from app.data.incidents import (
+    insert_incident,
+    get_all_incidents_df,
+    update_incident_status,
+    delete_incident
+)
+from app.data.datasets import (
+    insert_dataset,
+    get_all_datasets_df,
+    update_dataset_name,
+    delete_dataset
+)
+from app.data.tickets import (
+    insert_ticket,
+    get_all_tickets_df,
+    update_ticket_status,
+    delete_ticket
+)
 
+def setup_database_complete():
+    print("\n" + "=" * 60)
+    print("STARTING: COMPLETE DATABASE SETUP")
+    print("=" * 60)
 
+    # 1. Create tables
+    print("\n[1/4] Creating database tables...")
+    create_all_tables()
 
-def print_incidents_table(incidents):
-    table = PrettyTable()
-    table.field_names = ["ID", "Date", "Type", "Severity", "Status", "Description", "Reported By"]
-    for row in incidents:
-        table.add_row(row)
-    print(table)
+    # 2. Migrate users from users.txt
+    print("\n[2/4] Migrating users from users.txt...")
+    migrated = migrate_users_from_file()
+    print(f"  Migrated {migrated} user(s).")
 
-def print_tickets_table(tickets):
-    table = PrettyTable()
-    table.field_names = ["ID", "Title", "Priority", "Status", "Created Date"]
-    for row in tickets:
-        table.add_row(row)
-    print(table)
+    # 3. Load CSV data
+    print("\n[3/4] Loading CSV data...")
+    results = load_all_csv_data()
+    for table, count in results.items():
+        print(f"  {table}: loaded {count} rows")
 
-def print_datasets_table(datasets):
-    table = PrettyTable()
-    table.field_names = ["ID", "Name", "Source", "Category", "Size"]
-    for row in datasets:
-        table.add_row(row)
-    print(table)
+    # 4. Verify with counts
+    print("\n[4/4] Verifying data snapshots...")
+    print("  Incidents sample:", len(get_all_incidents_df()))
+    print("  Datasets sample:", len(get_all_datasets_df()))
+    print("  Tickets sample:", len(get_all_tickets_df()))
 
+def demo_auth_and_sessions():
+    print("\n" + "=" * 60)
+    print("DEMO: AUTHENTICATION & SESSIONS")
+    print("=" * 60)
 
-def demo_tickets():
-    # Insert a test ticket
-    insert_ticket("VPN not working", "High", "open", "2025-12-11")
-    print("✓ Ticket inserted")
+    # Register a new user
+    ok, msg = register_user("bob", "SecurePass123!", "analyst")
+    print("Register:", msg)
 
-    # Read all tickets
-    tickets = get_all_tickets()
-    print_tickets_table(tickets)
+    # Login user
+    ok, msg = login_user("bob", "SecurePass123!")
+    print("Login:", msg)
+
+def demo_crud_actions():
+    print("\n" + "=" * 60)
+    print("DEMO: CRUD OPERATIONS")
+    print("=" * 60)
+
+    # Incident insert
+    new_id = 999999
+    insert_incident(
+        incident_id=new_id,
+        timestamp="2025-01-01 12:00:00.000000",
+        severity="High",
+        category="Phishing",
+        status="Open",
+        description="Suspicious email detected"
+    )
+    print(f"Inserted incident {new_id}")
 
     # Update status
-    rows = update_ticket_status(1, "resolved")
-    print(f"Updated {rows} row(s)")
+    changed = update_incident_status(new_id, "Resolved")
+    print(f"Updated incident status rows: {changed}")
 
-    # Delete ticket
-    rows = delete_ticket_by_id(1)
-    print(f"Deleted {rows} row(s)")
+    # Delete
+    deleted = delete_incident(new_id)
+    print(f"Deleted incident rows: {deleted}")
 
-def demo_datasets():
-        # Insert a test dataset
-        insert_dataset("Threat Intel Feed", "External", "Cybersecurity", "500MB")
-        print("✓ Dataset inserted")
+    # Dataset insert/update/delete demo
+    insert_dataset(12345, "Test Dataset", 100, 5, "alice", "2025-01-01")
+    print("Datasets total:", len(get_all_datasets_df()))
+    update_dataset_name(12345, "Updated Dataset Name")
+    delete_dataset(12345)
 
-        # Read all datasets
-        datasets = get_all_datasets()
-        print_datasets_table(datasets)
-
-        # Update category
-        rows = update_dataset_category(1, "Updated Category")
-        print(f"Updated {rows} row(s)")
-
-        # Delete dataset
-        rows = delete_dataset_by_id(1)
-        print(f"Deleted {rows} row(s)")
-
-def main():
-    #  Setup database
-    conn = connect_database()
-    create_all_tables(conn)
-    conn.close()
-
-    #  Migrate users from file (users.txt → database)
-    migrated = migrate_users_from_file()
-    print(f"Migrated {migrated} users from users.txt")
-
-    # Register a NEW test user (avoid conflict with migrated ones)
-    success, msg = register_user("bob", "TestPass456!", "analyst")
-    print(msg)
-
-    #  Login with the new user
-    success, msg = login_user("bob", "TestPass456!")
-    print(msg)
-
-    #  Load CSV data into domain tables
-    load_all_csv_data()
-
-     # Incident CRUD demo
-    incident_id = insert_incident(
-        "2025-12-08", "Phishing", "High", "Open",
-        "Suspicious email detected", "bob"
-    )
-    print(f"Inserted incident #{incident_id}")
-
-    incidents = get_all_incidents()
-    print_incidents_table(incidents)
-
-    rows = update_incident_status(incident_id, "Resolved")
-    print(f"Updated {rows} row(s)")
-
-    rows = delete_incident(incident_id)
-    print(f"Deleted {rows} row(s)")
-
-    # Ticket CRUD demo
-    demo_tickets()
-
-    # Dataset CRUD demo
-    demo_datasets()
-
+    # Ticket insert/update/delete demo
+    insert_ticket(54321, "High", "System outage", "Open", "bob", "2025-01-01", 12)
+    print("Tickets total:", len(get_all_tickets_df()))
+    update_ticket_status(54321, "Closed")
+    delete_ticket(54321)
 
 if __name__ == "__main__":
-    main()
+    setup_database_complete()
+    demo_auth_and_sessions()
+    demo_crud_actions()

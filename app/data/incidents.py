@@ -1,67 +1,48 @@
-# Incident CRUD operations
-# creates ,reads, updates and deletes incidents .
-
 import pandas as pd
 from app.data.db import connect_database
 
-def insert_incident(date, incident_type, severity, status, description, reported_by):
-    """
-    Insert a new cyber incident.
-    Parameters: date, type, severity, status, description, reporter.
-    Returns the ID of the inserted incident.
-    """
+def insert_incident(incident_id: int, timestamp: str, severity: str,
+                    category: str, status: str, description: str) -> int:
+    """Insert a new cyber incident; returns incident_id (PK)."""
     conn = connect_database()
-    cursor = conn.cursor()
-    cursor.execute("""
-        INSERT INTO cyber_incidents (date, incident_type, severity, status, description, reported_by)
+    cur = conn.cursor()
+    cur.execute("""
+        INSERT INTO cyber_incidents (incident_id, timestamp, severity, category, status, description)
         VALUES (?, ?, ?, ?, ?, ?)
-    """, (date, incident_type, severity, status, description, reported_by))
+    """, (incident_id, timestamp, severity, category, status, description))
     conn.commit()
-    incident_id = cursor.lastrowid
     conn.close()
     return incident_id
 
-def get_all_incidents():
-    """
-    Get all incidents as DataFrame.
-    Easier to analyse and visualise later.
-    Orders by newest first (id DESC).
-    """
+def get_all_incidents_df():
+    """Return all incidents as a pandas DataFrame."""
     conn = connect_database()
     df = pd.read_sql_query(
-        "SELECT * FROM cyber_incidents ORDER BY id DESC",
+        "SELECT * FROM cyber_incidents ORDER BY incident_id DESC",
         conn
     )
     conn.close()
     return df
 
-def update_incident_status(incident_id, new_status):
-    """
-    Update the status of an incident.
-    """
+def update_incident_status(incident_id: int, new_status: str) -> int:
+    """Update status; return affected rows."""
     conn = connect_database()
-    cursor = conn.cursor()
-    cursor.execute(
-        "UPDATE cyber_incidents SET status = ? WHERE id = ?",
+    cur = conn.cursor()
+    cur.execute(
+        "UPDATE cyber_incidents SET status = ? WHERE incident_id = ?",
         (new_status, incident_id)
     )
     conn.commit()
-    rows = cursor.rowcount
+    count = cur.rowcount
     conn.close()
-    return rows
+    return count
 
-def delete_incident(incident_id):
-    """
-    Delete an incident from the database
-    and has a permanently deleted status.
-    """
+def delete_incident(incident_id: int) -> int:
+    """Delete incident; return affected rows."""
     conn = connect_database()
-    cursor = conn.cursor()
-    cursor.execute(
-        "DELETE FROM cyber_incidents WHERE id = ?",
-        (incident_id,)
-    )
+    cur = conn.cursor()
+    cur.execute("DELETE FROM cyber_incidents WHERE incident_id = ?", (incident_id,))
     conn.commit()
-    rows = cursor.rowcount
+    count = cur.rowcount
     conn.close()
-    return rows
+    return count

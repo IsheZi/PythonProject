@@ -1,83 +1,85 @@
 import bcrypt
+import secrets
 from pathlib import Path
 from app.data.db import connect_database
+from app.data.users import get_user_by_username, insert_user
 
-def migrate_users_from_file(filepath=Path("DATA") / "users.txt"):
-    """
-    Migrate users from users.txt to the database.
-    - Each line in users.txt has the format: username,password_hash,role
-    - Uses INSERT OR IGNORE to avoid duplicates.
-    """
-    conn = connect_database()
-    cursor = conn.cursor()
-    migrated_count = 0
+USERS_TXT = Path("DATA") / "users.txt"
 
-    if not filepath.exists():
-        print(f"No users.txt found at {filepath}")
+# ---------------- Migration ----------------
+def migrate_users_from_file() -> int:
+    """Migrate users from Week 7 users.txt => users table.
+       Expected line format: username,hashed_password[,role]"""
+    if not USERS_TXT.exists():
         return 0
 
-    with open(filepath, "r") as f:
+    conn = connect_database()
+    cur = conn.cursor()
+    migrated = 0
+
+    with USERS_TXT.open("r", encoding="utf-8") as f:
         for line in f:
-            line = line.strip()
-            if not line:
+            parts = line.strip().split(",", 2)
+            if len(parts) < 2:
                 continue
-            parts = line.split(",")
-            if len(parts) != 3:
-                continue
-            username, password_hash, role = parts
-            cursor.execute(
-                "INSERT OR IGNORE INTO users (username, password_hash, role) VALUES (?, ?, ?)",
-                (username, password_hash, role)
-            )
-            migrated_count += 1
+            username = parts[0].strip()
+            password_hash = parts[1].strip()
+            role = parts[2].strip() if len(parts) == 3 else "user"
+
+            cur.execute("""
+                INSERT OR IGNORE INTO users (username, password_hash, role)
+                VALUES (?, ?, ?)
+            """, (username, password_hash, role))
+            migrated += cur.rowcount
 
     conn.commit()
     conn.close()
-    print(f"Migrated {migrated_count} users from file")
-    return migrated_count
+    return migrated
 
-
-def register_user(username, password, role="user"):
-    """
-    Register a new user with bcrypt hashing.
-    - Checks if username already exists.
-    - Hashes password securely before storing.
-    """
-    conn = connect_database()
-    cursor = conn.cursor()
-
-    cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
-    if cursor.fetchone():
-        conn.close()
+# ---------------- Registration ----------------
+def register_user(username: str, password: str, role: str = "user") -> tuple[bool, str]:
+    """Register a new user with bcrypt hashing."""
+    if get_user_by_username(username):
         return False, f"Username '{username}' already exists."
 
-    password_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    password_hash = bcrypt.hashpw(
+        password.encode("utf-8"),
+        bcrypt.gensalt()
+    ).decode("utf-8")
 
-    cursor.execute(
-        "INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)",
-        (username, password_hash, role)
-    )
+    insert_user(username, password_hash, role)
+    return True, f"User '{username}' registered successfully!"
+
+# ---------------- Login ----------------
+def login_user(username: str, password: str) -> tuple[bool, str]:
+    """Authenticate user against stored bcrypt hash."""
+    user = get_user_by_username(username)
+    if not user:
+        return False, "Username not found."
+
+    stored_hash = user[2]  # password_hash column
+    if bcrypt.checkpw(password.encode("utf-8"), stored_hash.encode("utf-8")):
+        token = create_session_db(username)
+        return True, f"Login successful. Session token: {token}"
+    return False, "Invalid password."
+
+# ---------------- Session Management ----------------
+def create_session_db(username: str) -> str:
+    """Create a session token and store it in the database."""
+    token = secrets.token_hex(16)
+    conn = connect_database()
+    cur = conn.cursor()
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS sessions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            token TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    cur.execute("""
+        INSERT INTO sessions (username, token) VALUES (?, ?)
+    """, (username, token))
     conn.commit()
     conn.close()
-    return True, f"User '{username}' registered successfully."
-
-
-def login_user(username, password):
-    """
-    Authenticate user by verifying password against stored hash.
-    - Retrieves stored hash from database.
-    - Compares with bcrypt.checkpw().
-    """
-    conn = connect_database()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
-    user = cursor.fetchone()
-    conn.close()
-
-    if not user:
-        return False, "User not found."
-
-    stored_hash = user[2]
-    if bcrypt.checkpw(password.encode("utf-8"), stored_hash.encode("utf-8")):
-        return True, "Login successful!"
-    return False, "Incorrect password."
+    return token

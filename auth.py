@@ -3,22 +3,35 @@ import os
 import string
 import time
 import secrets
+from pathlib import Path
 
 # File paths for storing user data, lockout info, and sessions
-USER_DATA_FILE = "DATA/users.txt"
-LOCKOUT_FILE = "lockout.txt"
-SESSION_FILE = "sessions.txt"
+DATA_DIR = Path("DATA")
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+USER_DATA_FILE = DATA_DIR / "users.txt"
+LOCKOUT_FILE = Path("lockout.txt")      # keeping original location
+SESSION_FILE = Path("sessions.txt")     # keeping original location
 
 # ---------------- Password Strength ----------------
+
+# A small set of common weak passwords to reject outright
+COMMON_PASSWORDS = {"password", "123456", "qwerty", "letmein", "admin", "welcome"}
+
 def password_strength(password: str):
     """
-    Evaluate the strength of a password based on length and character variety.
+    Evaluate the strength of a password based on length, character variety,
+    and common password patterns.
     Returns a tuple (strength_label, score).
     """
+    # Reject common passwords immediately
+    if password.lower() in COMMON_PASSWORDS:
+        return "Very Weak", 0
+
     score = 0
     length = len(password)
 
-    # Check for character types
+    # Character types
     upper_case = any(c.isupper() for c in password)
     lower_case = any(c.islower() for c in password)
     special = any(c in string.punctuation for c in password)
@@ -26,16 +39,20 @@ def password_strength(password: str):
 
     characters = [upper_case, lower_case, special, digits]
 
-    # Add points for length
+    # Length thresholds (your originals)
     if length > 8: score += 1
     if length > 12: score += 1
     if length > 17: score += 1
     if length > 20: score += 1
 
-    # Add points for character variety
+    # Variety points (your original logic)
     score += sum(characters) - 1
 
-    # Return strength label
+    # Small entropy bonus: long + varied
+    if length >= 12 and sum(characters) >= 3:
+        score += 1
+
+    # Labels (your original categories)
     if score < 4:
         return "Weak", score
     elif score == 4:
@@ -62,52 +79,64 @@ def verify_password(plain_text_password: str, hashed_password: str) -> bool:
 # ---------------- User Management ----------------
 def user_exists(username: str) -> bool:
     """Check if a username already exists in the user database."""
-    if not os.path.exists(USER_DATA_FILE):
+    if not USER_DATA_FILE.exists():
         return False
-    with open(USER_DATA_FILE, "r") as f:
+    with USER_DATA_FILE.open("r", encoding="utf-8") as f:
         for line in f:
-            parts = line.strip().split(",")
-            if parts[0] == username:
+            parts = line.strip().split(",", 2)
+            if parts and parts[0] == username:
                 return True
     return False
 
 def register_user(username: str, password: str, role: str):
     """Register a new user with hashed password and role."""
-    if os.path.exists(USER_DATA_FILE):
-        # check if username already exists
-        with open(USER_DATA_FILE, "r") as f:
+    # Check if username already exists
+    if USER_DATA_FILE.exists():
+        with USER_DATA_FILE.open("r", encoding="utf-8") as f:
             for line in f:
-                parts = line.strip().split(",")
-                if len(parts) >= 1 and parts[0] == username:
+                parts = line.strip().split(",", 2)
+                if parts and parts[0] == username:
                     print(f"Error: Username '{username}' already exists.")
                     return False
 
-    # hash the password
+    # Check password strength before hashing
+    strength, score = password_strength(password)
+    if strength in ["Weak", "Very Weak"]:
+        print(f"Error: Password strength is {strength}. Please choose a stronger password.")
+        return False
+
+    # Hash the password
     hashed_password = hash_password(password)
 
-    # save user data (username, hash, role)
-    with open(USER_DATA_FILE, "a") as f:
+    # Save user data (username, hash, role)
+    with USER_DATA_FILE.open("a", encoding="utf-8") as f:
         f.write(f"{username},{hashed_password},{role}\n")
 
-    print(f"Success: User '{username}' registered with role '{role}'.")
+    print(f"Success: User '{username}' registered with role '{role}'. Password strength: {strength}.")
     return True
 
 # ---------------- Account Lockout ----------------
 def is_locked(username: str) -> bool:
     """Check if a user account is locked (5 minutes)."""
-    if not os.path.exists(LOCKOUT_FILE):
+    if not LOCKOUT_FILE.exists():
         return False
-    with open(LOCKOUT_FILE, "r") as f:
+    with LOCKOUT_FILE.open("r", encoding="utf-8") as f:
         for line in f:
-            user, timestamp = line.strip().split(",")
+            parts = line.strip().split(",", 1)
+            if len(parts) != 2:
+                continue
+            user, ts = parts
             if user == username:
-                if time.time() - float(timestamp) < 300:
-                    return True
+                try:
+                    if time.time() - float(ts) < 300:
+                        return True
+                except ValueError:
+                    continue
     return False
 
 def lock_account(username: str):
     """Lock a user account after failed attempts."""
-    with open(LOCKOUT_FILE, "a") as f:
+    with LOCKOUT_FILE.open("a", encoding="utf-8") as f:
         f.write(f"{username},{time.time()}\n")
     print(f"Account '{username}' locked for 5 minutes due to failed attempts.")
 
@@ -117,7 +146,7 @@ def login_user(username: str, password: str):
     Authenticate a user and return their role if successful.
     Implements account lockout after 3 failed attempts.
     """
-    if not os.path.exists(USER_DATA_FILE):
+    if not USER_DATA_FILE.exists():
         print("Error: No users registered yet.")
         return False
 
@@ -126,16 +155,16 @@ def login_user(username: str, password: str):
         return False
 
     failed_attempts = 0
-    with open(USER_DATA_FILE, "r") as f:
+    with USER_DATA_FILE.open("r", encoding="utf-8") as f:
         for line in f:
-            parts = line.strip().split(",")
+            parts = line.strip().split(",", 2)
             if len(parts) == 3:
                 user, stored_hash, role = parts
             elif len(parts) == 2:
                 user, stored_hash = parts
                 role = "user"
             else:
-                 continue
+                continue
 
             if user == username:
                 if verify_password(password, stored_hash):
@@ -156,24 +185,24 @@ def login_user(username: str, password: str):
 def create_session(username: str) -> str:
     """Create a session token for a logged-in user."""
     token = secrets.token_hex(16)
-    with open(SESSION_FILE, "a") as f:
+    with SESSION_FILE.open("a", encoding="utf-8") as f:
         f.write(f"{username},{token},{time.time()}\n")
     return token
 
 # ---------------- Admin Functions ----------------
 def view_all_users():
     """Admin-only function to list all registered users and roles."""
-    if not os.path.exists(USER_DATA_FILE):
+    if not USER_DATA_FILE.exists():
         print("No users registered yet.")
         return
     print("\n--- Registered Users ---")
-    with open(USER_DATA_FILE, "r") as f:
+    with USER_DATA_FILE.open("r", encoding="utf-8") as f:
         for line in f:
-            parts = line.strip().split(",")
+            parts = line.strip().split(",", 2)
             if len(parts) >= 3:
-                user,stored_hash,role = parts
+                user, stored_hash, role = parts
             elif len(parts) == 2:
-                user,stored_hash= parts
+                user, stored_hash = parts
                 role = "user"
             else:
                 continue

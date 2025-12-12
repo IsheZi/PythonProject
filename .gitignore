@@ -1,27 +1,3 @@
-# Virtual environments
-.venv/
-env/
-
-# PyCharm project settings
-.idea/
-
-# Python cache and compiled files
+DATA/intelligence_platform.db
 __pycache__/
 *.pyc
-*.pyo
-*.pyd
-
-# Logs
-*.log
-
-# OS-specific files
-.DS_Store
-Thumbs.db
-
-# Sessions or temporary data
-sessions.txt
-
-# Test/coverage reports
-.coverage
-*.coverage
-htmlcov/
