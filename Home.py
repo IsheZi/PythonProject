@@ -6,12 +6,12 @@ from app.data.db_helpers import connect_database, ensure_tables, seed_admin
 st.set_page_config(page_title="Intelligence Platform", layout="wide")
 st.title("Intelligence Platform Login")
 
-# ✅ Ensure DB and tables exist before anything else
+#Ensures DB and tables exist before anything else
 conn = connect_database()
 ensure_tables(conn)
 seed_admin(conn)  # optional: guarantees a default admin account
 
-# Initialize session state
+#Initialize session state.
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 if "username" not in st.session_state:
@@ -19,7 +19,7 @@ if "username" not in st.session_state:
 if "role" not in st.session_state:
     st.session_state.role = ""
 
-# Tabs for login and registration
+# Tabs for login and registration.
 tab_login, tab_register = st.tabs(["Login", "Register"])
 
 # LOGIN TAB
@@ -37,7 +37,7 @@ with tab_login:
 
             st.success(f"Login successful! Role: {st.session_state.role}")
 
-            # ✅ Redirect user to correct dashboard
+            #Redirect the user to correct dashboard.
             if st.session_state.role == "analyst":
                 st.switch_page("pages/1_Cyber_Incidents.py")
             elif st.session_state.role == "admin":

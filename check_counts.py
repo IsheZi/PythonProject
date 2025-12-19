@@ -1,6 +1,6 @@
 import sqlite3
 
-# Path to your database
+# Path to yOUR database
 db_path = r"C:\Users\Isheanesu Zijenah\PycharmProjects\PythonProject\CW2_M00956545_CST1510\DATA\intelligence_platform.db"
 
 conn = sqlite3.connect(db_path)

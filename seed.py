@@ -5,7 +5,7 @@ from app.data.schema import create_all_tables
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "DATA"
-
+#for uploading/seeding the tables on straemlit .
 def seed_incidents_from_csv(filepath=DATA_DIR / "cyber_incidents.csv"):
     conn = connect_database()
     create_all_tables()
@@ -68,11 +68,11 @@ def seed_tickets_from_csv(filepath=DATA_DIR / "it_tickets.csv"):
             row["ticket_id"],
             row["priority"],
             row["status"],
-            "IT Issue",            # subject placeholder
+            "IT Issue",
             row["description"],
             row["assigned_to"],
             row["created_at"],
-            None,                  # resolved_date not in CSV
+            None,
             "General"
         ))
         count += cur.rowcount
