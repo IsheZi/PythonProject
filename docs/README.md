@@ -45,5 +45,5 @@ The platform was implemented at **Tier 2**, combining secure authentication, CRU
 
 Clone the repository:
 ```bash
-git clone [your-repo-link]
+git clone https://github.com/IsheZi/PythonProject.git
 cd multi-domain-intelligence-platform
