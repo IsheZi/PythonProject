@@ -1,23 +1,23 @@
-from app.data.schema import create_all_tables
-from app.services.user_service import (
+from CW2_M00956545_CST1510.app import create_all_tables
+from CW2_M00956545_CST1510.app import (
     register_user,
     login_user,
     migrate_users_from_file
 )
-from app.services.loaders import load_all_csv_data
-from app.data.incidents import (
+from CW2_M00956545_CST1510.app import load_all_csv_data
+from CW2_M00956545_CST1510.app import (
     insert_incident,
     get_all_incidents_df,
     update_incident_status,
     delete_incident
 )
-from app.data.datasets import (
+from CW2_M00956545_CST1510.app import (
     insert_dataset,
     get_all_datasets_df,
     update_dataset_name,
     delete_dataset
 )
-from app.data.tickets import (
+from CW2_M00956545_CST1510.app import (
     insert_ticket,
     get_all_tickets_df,
     update_ticket_status,
@@ -80,7 +80,7 @@ def demo_crud_actions():
     )
     print(f"Inserted incident {new_id}")
 
-    # Update status
+    # Update statu7 and 8
     changed = update_incident_status(new_id, "Resolved")
     print(f"Updated incident status rows: {changed}")
 

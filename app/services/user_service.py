@@ -69,6 +69,7 @@ def create_session_db(username: str) -> str:
     token = secrets.token_hex(16)
     conn = connect_database()
     cur = conn.cursor()
+    # Ensure sessions table exists
     cur.execute("""
         CREATE TABLE IF NOT EXISTS sessions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,

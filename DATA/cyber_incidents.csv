@@ -114,3 +114,4 @@ incident_id,timestamp,severity,category,status,description
 1112,2025-10-22 12:23:45.891611,High,Phishing,In Progress,Recent Phishing Attempt 12
 1113,2025-10-26 00:23:45.891618,High,Phishing,Open,Recent Phishing Attempt 13
 1114,2025-09-30 20:23:45.891624,High,Phishing,Open,Recent Phishing Attempt 14
+
